@@ -16,7 +16,8 @@ const App: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const apiKey = (window as any).process?.env?.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    // Vérification de la clé API standardisée
+    const apiKey = process.env.API_KEY;
     setIsKeyMissing(!apiKey);
   }, []);
 
@@ -82,7 +83,7 @@ const App: React.FC = () => {
       {isKeyMissing && (
         <div className="bg-amber-500 text-white px-4 py-2 text-center text-xs font-bold no-print">
           <i className="fa-solid fa-triangle-exclamation mr-2"></i>
-          GEMINI_API_KEY manquante. L'analyse IA est désactivée.
+          API_KEY manquante. L'analyse IA est désactivée.
         </div>
       )}
       
