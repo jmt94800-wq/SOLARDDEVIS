@@ -1,5 +1,6 @@
 
 export interface ProspectEntry {
+  id: string;
   client: string;
   lieu: string;
   adresse: string;
@@ -10,6 +11,7 @@ export interface ProspectEntry {
   puissanceMaxW: number;
   dureeHj: number;
   quantite: number;
+  unitPrice?: number; // Prix d'achat ou base
 }
 
 export interface ClientProfile {
@@ -22,9 +24,10 @@ export interface ClientProfile {
   totalMaxW: number;
 }
 
-export interface QuoteCalculations {
-  recommendedPanels: number;
-  estimatedSystemCost: number;
-  roiYears: number;
-  annualSavings: number;
+export interface QuoteConfig {
+  marginPercent: number;
+  discountPercent: number;
+  materialTaxPercent: number;
+  installCost: number;
+  installTaxPercent: number;
 }

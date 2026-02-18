@@ -1,25 +1,23 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ProspectEntry, ClientProfile } from './types';
+import { ProspectEntry, ClientProfile, QuoteConfig } from './types';
 import { parseCSV, groupByClient } from './utils';
 import { Dashboard } from './components/Dashboard';
+import { QuoteEditor } from './components/QuoteEditor';
 import { QuoteGenerator } from './components/QuoteGenerator';
 
 const App: React.FC = () => {
-  const [entries, setEntries] = useState<ProspectEntry[]>([]);
   const [profiles, setProfiles] = useState<ClientProfile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<ClientProfile | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
+  const [quoteConfig, setQuoteConfig] = useState<QuoteConfig | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isKeyMissing, setIsKeyMissing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Vérification de la clé API au démarrage
-    if (!process.env.API_KEY) {
-      setIsKeyMissing(true);
-      console.warn("Diagnostic : API_KEY non détectée dans process.env");
-    }
+    const apiKey = (window as any).process?.env?.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    setIsKeyMissing(!apiKey);
   }, []);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,7 +33,6 @@ const App: React.FC = () => {
           setError("Le fichier semble vide ou mal formaté.");
           return;
         }
-        setEntries(parsed);
         setProfiles(groupByClient(parsed));
         setError(null);
       } catch (err) {
@@ -45,140 +42,108 @@ const App: React.FC = () => {
     reader.readAsText(file);
   };
 
-  const clearData = () => {
-    setEntries([]);
-    setProfiles([]);
-    setSelectedProfile(null);
-    setError(null);
+  const handleProfileSelect = (profile: ClientProfile) => {
+    setSelectedProfile(profile);
+    setIsEditing(true);
   };
 
-  if (selectedProfile) {
+  const handleSaveQuote = (updatedProfile: ClientProfile, config: QuoteConfig) => {
+    setSelectedProfile(updatedProfile);
+    setQuoteConfig(config);
+    setIsEditing(false);
+  };
+
+  if (selectedProfile && isEditing) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <QuoteEditor 
+          profile={selectedProfile} 
+          onSave={handleSaveQuote} 
+          onCancel={() => { setSelectedProfile(null); setIsEditing(false); }} 
+        />
+      </div>
+    );
+  }
+
+  if (selectedProfile && quoteConfig) {
     return (
       <div className="min-h-screen bg-slate-50">
         <QuoteGenerator 
           profile={selectedProfile} 
-          onBack={() => setSelectedProfile(null)} 
+          config={quoteConfig}
+          onBack={() => setIsEditing(true)} 
         />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-slate-50">
       {isKeyMissing && (
-        <div className="bg-amber-500 text-white px-4 py-2 text-center text-sm font-medium no-print">
+        <div className="bg-amber-500 text-white px-4 py-2 text-center text-xs font-bold no-print">
           <i className="fa-solid fa-triangle-exclamation mr-2"></i>
-          Clé API non configurée. L'IA sera désactivée. 
-          <a href="https://vercel.com/docs/projects/environment-variables" target="_blank" className="underline ml-2 hover:text-amber-100">
-            Voir comment configurer sur Vercel
-          </a>
+          GEMINI_API_KEY manquante. L'analyse IA est désactivée.
         </div>
       )}
       
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10 shadow-sm">
+      <nav className="bg-white border-b border-slate-200 px-8 py-5 flex justify-between items-center sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-2 rounded-lg">
-            <i className="fa-solid fa-sun text-white text-xl"></i>
+          <div className="bg-blue-600 p-2 rounded-xl">
+            <i className="fa-solid fa-sun text-white"></i>
           </div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight">SolarDevis <span className="text-blue-600">Pro</span></h1>
+          <h1 className="text-xl font-black text-slate-900">SolarDevis <span className="text-blue-600">Pro</span></h1>
         </div>
         {profiles.length > 0 && (
           <button 
-            onClick={clearData}
-            className="text-sm font-medium text-red-500 hover:text-red-600 px-4 py-2"
+            onClick={() => { setProfiles([]); setSelectedProfile(null); }}
+            className="text-xs font-bold text-red-400 hover:text-red-600 uppercase tracking-widest"
           >
-            Effacer les données
+            Réinitialiser
           </button>
         )}
       </nav>
 
-      <main className="flex-1 container mx-auto px-4 py-8">
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl flex items-center gap-3">
-            <i className="fa-solid fa-circle-exclamation"></i>
-            {error}
-          </div>
-        )}
+      <main className="flex-1 container mx-auto px-6 py-12">
+        {error && <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl font-medium">{error}</div>}
 
         {profiles.length === 0 ? (
-          <div className="max-w-2xl mx-auto mt-20 text-center">
-            <div className="mb-8">
-              <div className="w-24 h-24 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <i className="fa-solid fa-file-csv text-4xl"></i>
-              </div>
-              <h2 className="text-3xl font-extrabold text-slate-900 mb-3">Générez vos devis instantanément</h2>
-              <p className="text-slate-600 text-lg">
-                Importez votre fichier d'audit énergétique (CSV) pour créer des propositions photovoltaïques professionnelles.
-              </p>
+          <div className="max-w-xl mx-auto text-center py-20">
+            <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner">
+              <i className="fa-solid fa-file-csv text-3xl"></i>
             </div>
-
-            <div 
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setIsDragging(false);
-                const file = e.dataTransfer.files[0];
-                if (file) {
-                  const reader = new FileReader();
-                  reader.onload = (re) => {
-                    const parsed = parseCSV(re.target?.result as string);
-                    setEntries(parsed);
-                    setProfiles(groupByClient(parsed));
-                  };
-                  reader.readAsText(file);
-                }
-              }}
-              className={`border-2 border-dashed rounded-3xl p-12 transition-all cursor-pointer bg-white
-                ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-400 hover:bg-slate-50'}
-              `}
+            <h2 className="text-4xl font-black text-slate-900 mb-4">Prêt pour votre prochain devis ?</h2>
+            <p className="text-slate-500 text-lg mb-10">Importez les données de l'audit pour commencer la configuration commerciale.</p>
+            
+            <button 
               onClick={() => fileInputRef.current?.click()}
+              className="bg-blue-600 text-white px-10 py-4 rounded-2xl font-black text-lg shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95"
             >
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileUpload} 
-                accept=".csv"
-                className="hidden" 
-              />
-              <div className="flex flex-col items-center gap-4">
-                <i className="fa-solid fa-cloud-arrow-up text-5xl text-slate-300"></i>
-                <div className="space-y-1">
-                  <p className="text-lg font-bold text-slate-700">Cliquez ou glissez-déposez votre fichier</p>
-                  <p className="text-sm text-slate-400">Supporte le format .csv (séparateur point-virgule)</p>
-                </div>
-                <div className="mt-4 bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-200">
-                  Sélectionner un fichier
-                </div>
-              </div>
-            </div>
+              Importer un fichier CSV
+              <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv" className="hidden" />
+            </button>
           </div>
         ) : (
-          <div>
-            <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex justify-between items-end mb-10">
               <div>
-                <h2 className="text-3xl font-black text-slate-900">Clients Détectés</h2>
-                <p className="text-slate-500">Sélectionnez un projet pour générer le devis détaillé.</p>
+                <h2 className="text-3xl font-black text-slate-900">Projets Détectés</h2>
+                <p className="text-slate-500 font-medium">Sélectionnez un client pour configurer le prix.</p>
               </div>
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-6 py-3 rounded-xl transition-colors flex items-center gap-2"
+                className="text-blue-600 font-bold flex items-center gap-2 hover:underline"
               >
-                <i className="fa-solid fa-plus"></i> Importer un autre fichier
+                <i className="fa-solid fa-plus"></i> Nouveau fichier
                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv" className="hidden" />
               </button>
             </div>
-            
-            <Dashboard 
-              profiles={profiles} 
-              onSelect={(p) => setSelectedProfile(p)} 
-            />
+            <Dashboard profiles={profiles} onSelect={handleProfileSelect} />
           </div>
         )}
       </main>
 
-      <footer className="bg-white border-t border-slate-200 py-8 text-center text-slate-400 text-sm">
-        <p>&copy; 2024 SolarDevis Pro. Conçu pour les experts du photovoltaïque.</p>
+      <footer className="py-10 text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+        &copy; 2024 SolarDevis Pro • Outil interne réservé aux agents certifiés
       </footer>
     </div>
   );
