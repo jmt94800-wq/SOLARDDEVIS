@@ -218,7 +218,7 @@ export const QuoteEditor: React.FC<QuoteEditorProps> = ({ profile, onSave, onCan
                 <div className="col-span-1 text-center">Durée (h/j)</div>
                 <div className="col-span-1 text-center">Qté</div>
                 <div className="col-span-1 text-center">Crête ?</div>
-                <div className="col-span-2 text-right">P.U. HT (€)</div>
+                <div className="col-span-2 text-right">P.U. HT ($)</div>
                 <div className="col-span-1 text-right">Total HT</div>
                 <div className="col-span-1 text-center">Actions</div>
               </div>
@@ -281,11 +281,11 @@ export const QuoteEditor: React.FC<QuoteEditorProps> = ({ profile, onSave, onCan
                         onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
                         className="w-full bg-slate-50 border-none rounded-lg text-sm p-2.5 text-right font-bold pr-6"
                       />
-                      <span className="absolute right-2 top-2.5 text-[10px] text-slate-400">€</span>
+                      <span className="absolute right-2 top-2.5 text-[10px] text-slate-400">$</span>
                     </div>
                   </div>
                   <div className="col-span-1 text-sm font-black text-slate-900 text-right pr-2">
-                    {((item.unitPrice || 0) * item.quantite).toLocaleString(undefined, { minimumFractionDigits: 2 })} €
+                    {((item.unitPrice || 0) * item.quantite).toLocaleString(undefined, { minimumFractionDigits: 2 })} $
                   </div>
                   <div className="col-span-1 flex justify-center">
                     <button 
@@ -338,14 +338,14 @@ export const QuoteEditor: React.FC<QuoteEditorProps> = ({ profile, onSave, onCan
               </div>
               
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Installation (€ HT)</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Installation ($ HT)</label>
                 <div className="relative">
                   <input 
                     type="number" value={config.installCost} 
                     onChange={(e) => setConfig({...config, installCost: parseFloat(e.target.value) || 0})}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3.5 text-sm font-black focus:ring-2 focus:ring-blue-500 outline-none pr-10"
                   />
-                  <span className="absolute right-4 top-4 text-slate-500 font-bold">€</span>
+                  <span className="absolute right-4 top-4 text-slate-500 font-bold">$</span>
                 </div>
               </div>
             </div>

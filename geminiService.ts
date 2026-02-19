@@ -19,7 +19,7 @@ export const getEnergyAnalysis = async (profile: ClientProfile) => {
       1. Évaluation du potentiel solaire local.
       2. Dimensionnement conseillé et type d'onduleur recommandé pour ${profile.totalMaxW}W de crête.
       3. Conseils d'économie d'énergie.
-      4. Estimation de rentabilité annuelle.
+      4. Estimation de rentabilité annuelle (en dollars US $).
 
       Réponds en format Markdown structuré.
     `;
