@@ -1,8 +1,8 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { ClientProfile } from "./types";
+import { ClientProfile, QuoteConfig } from "./types";
 
-export const getEnergyAnalysis = async (profile: ClientProfile) => {
+export const getEnergyAnalysis = async (profile: ClientProfile, config: QuoteConfig, grandTotal: number) => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
     return "### ⚠️ Clé API manquante\n\nVeuillez configurer votre clé API pour bénéficier de l'analyse IA.";
@@ -11,22 +11,34 @@ export const getEnergyAnalysis = async (profile: ClientProfile) => {
   try {
     const ai = new GoogleGenAI({ apiKey });
     const prompt = `
-      En tant qu'expert en énergie solaire pour le marché d'Haïti (HSP moyen 5.2), analyse le profil de consommation suivant.
-      Client: ${profile.name}
-      Adresse: ${profile.address}
-      Consommation journalière: ${profile.totalDailyKWh.toFixed(2)} kWh/j
-      Puissance de crête (charges critiques): ${profile.totalMaxW} W
+      En tant qu'expert en énergie solaire pour le marché d'Haïti (HSP moyen 5.2), analyse ce DEVIS COMPLET.
       
-      Détails des appareils:
-      ${profile.items.filter(i => i.quantite > 0).map(i => `- ${i.appareil}: ${i.puissanceHoraireKWh}kWh/h, ${i.dureeHj}h/j, Qte: ${i.quantite} (Inclus crête: ${i.inclusPuisCrete ? 'OUI' : 'NON'})`).join('\n')}
+      INFOS CLIENT & SITE:
+      - Client: ${profile.name}
+      - Adresse: ${profile.address}
+      
+      DONNÉES TECHNIQUES:
+      - Consommation journalière étudiée: ${profile.totalDailyKWh.toFixed(2)} kWh/j
+      - Puissance de crête (onduleur requis): ${profile.totalMaxW} W
+      - Rendement système configuré: ${config.efficiencyPercent}%
+      - Puissance panneaux utilisés: ${config.panelPowerW}W
+      
+      DÉTAILS FINANCIERS DU DEVIS:
+      - Montant Total Net (Taxes incluses): ${grandTotal.toLocaleString()} $
+      - Coût Installation: ${config.installCost} $
+      - Marge matériel appliquée: ${config.marginPercent}%
+      - Remise accordée: ${config.discountPercent}%
+      
+      ARTICLES PROPOSÉS (Quantité > 0):
+      ${profile.items.filter(i => i.quantite > 0).map(i => `- ${i.appareil}: Qte ${i.quantite}, P.U. ${i.unitPrice}$`).join('\n')}
 
-      Fournis une analyse professionnelle courte (en français) incluant:
-      1. Évaluation du potentiel solaire local.
-      2. Dimensionnement conseillé et type d'onduleur recommandé pour ${profile.totalMaxW}W de crête.
-      3. Conseils d'économie d'énergie.
-      4. Estimation de rentabilité annuelle (en dollars US $).
+      TRAVAIL DEMANDÉ:
+      1. VÉRIFICATION DE COHÉRENCE : Le montant total de ${grandTotal}$ est-il réaliste pour un système de cette puissance en Haïti ?
+      2. ANALYSE TECHNIQUE : L'onduleur et les panneaux (selon les kWh/j) sont-ils bien proportionnés ?
+      3. RENTABILITÉ : En combien d'années ce système à ${grandTotal}$ sera-t-il rentabilisé par rapport à un coût du kWh réseau/génératrice à 0.50$ ?
+      4. RECOMMANDATIONS : Points de vigilance ou améliorations possibles.
 
-      Réponds en format Markdown structuré.
+      Réponds de manière concise en Markdown avec des icônes pour faciliter la lecture.
     `;
 
     const response = await ai.models.generateContent({
@@ -37,10 +49,9 @@ export const getEnergyAnalysis = async (profile: ClientProfile) => {
     return response.text;
   } catch (error: any) {
     console.error("Erreur Gemini:", error);
-    // Gestion spécifique de l'erreur RPC/XHR pour l'utilisateur
     if (error.message?.includes('xhr error') || error.status === 'UNKNOWN') {
-      return "### ⚠️ Erreur de connexion IA\n\nLe service d'analyse rencontre une difficulté technique temporaire (Erreur réseau/RPC). Veuillez réessayer dans quelques instants ou vérifier votre connexion.";
+      return "### ⚠️ Erreur de connexion IA\n\nLe service d'analyse rencontre une difficulté technique temporaire. Veuillez réessayer.";
     }
-    return `### ⚠️ Analyse indisponible\n\nImpossible de générer l'analyse automatique actuellement.\n\n**Raison :** ${error.message}`;
+    return `### ⚠️ Analyse indisponible\n\n**Raison :** ${error.message}`;
   }
 };

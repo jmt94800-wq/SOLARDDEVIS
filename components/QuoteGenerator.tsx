@@ -16,23 +16,7 @@ export const QuoteGenerator: React.FC<QuoteGeneratorProps> = ({ profile, config,
   
   const specs = calculateSolarSpecs(profile.totalDailyKWh, config.panelPowerW, config.efficiencyPercent);
 
-  useEffect(() => {
-    const fetchAnalysis = async () => {
-      setLoading(true);
-      const res = await getEnergyAnalysis(profile);
-      setAnalysis(res || '');
-      setLoading(false);
-    };
-    fetchAnalysis();
-  }, [profile]);
-
-  const handlePrint = () => {
-    window.print();
-  };
-
   const materialMarginMultiplier = 1 + (config.marginPercent / 100);
-  
-  // Filtrage des articles : quantité > 0 ET prix unitaire > 0
   const visibleItems = profile.items.filter(item => item.quantite > 0 && (item.unitPrice || 0) > 0);
   
   const totalMaterialHT_Base = Math.round(visibleItems.reduce((sum, i) => sum + ((i.unitPrice || 0) * i.quantite * materialMarginMultiplier), 0) * 100) / 100;
@@ -42,6 +26,20 @@ export const QuoteGenerator: React.FC<QuoteGeneratorProps> = ({ profile, config,
   
   const installTax = Math.round(config.installCost * (config.installTaxPercent / 100) * 100) / 100;
   const grandTotal = totalMaterialAfterDiscount + materialTax + config.installCost + installTax;
+
+  useEffect(() => {
+    const fetchAnalysis = async () => {
+      setLoading(true);
+      const res = await getEnergyAnalysis(profile, config, grandTotal);
+      setAnalysis(res || '');
+      setLoading(false);
+    };
+    fetchAnalysis();
+  }, [profile, config, grandTotal]);
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   return (
     <div className="max-w-4xl mx-auto py-2 px-2 print:py-0 print:px-0">
@@ -203,10 +201,10 @@ export const QuoteGenerator: React.FC<QuoteGeneratorProps> = ({ profile, config,
           {/* Analyse IA - Plus petite à l'impression */}
           <div className="mt-4 no-print border-t border-slate-100 pt-4 print:mt-2 print:border-none">
             <h3 className="text-sm font-black text-slate-900 mb-2 flex items-center gap-2">
-              <i className="fa-solid fa-wand-magic-sparkles text-blue-500 text-xs"></i> Analyse IA
+              <i className="fa-solid fa-wand-magic-sparkles text-blue-500 text-xs"></i> Vérification IA du Devis
             </h3>
             {loading ? (
-              <div className="text-[9px] text-slate-400 animate-pulse font-bold">Analyse en cours...</div>
+              <div className="text-[9px] text-slate-400 animate-pulse font-bold">Analyse de cohérence en cours...</div>
             ) : (
               <div className="bg-slate-50 rounded-lg p-3 text-slate-700 leading-tight text-[10px] print:p-0 print:bg-white print:text-[8px]">
                 <div dangerouslySetInnerHTML={{ __html: analysis.replace(/\n/g, '<br/>') }} />
