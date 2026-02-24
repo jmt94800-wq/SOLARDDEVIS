@@ -1,7 +1,8 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ClientProfile, ProspectEntry, QuoteConfig } from '../types';
 import { calculateTotals, calculateSolarSpecs } from '../utils';
+import { fetchSolarData, getHaitiDefaultHSP } from '../solarApiService';
 
 interface QuoteEditorProps {
   profile: ClientProfile;
@@ -46,14 +47,44 @@ export const QuoteEditor: React.FC<QuoteEditorProps> = ({ profile, onSave, onPer
     installCost: 1500,
     installTaxPercent: 10,
     panelPowerW: 425,
-    efficiencyPercent: 80
+    efficiencyPercent: 80,
+    hsp: profile.savedConfig?.hsp || profile.hsp || 5.2
   });
+
+  const [location, setLocation] = useState({
+    lat: profile.latitude || 18.5333, // Default Port-au-Prince
+    lng: profile.longitude || -72.3333
+  });
+
+  const [solarLoading, setSolarLoading] = useState(false);
+  const [solarError, setSolarError] = useState<string | null>(null);
 
   const [panelCountResult, setPanelCountResult] = useState<number | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   const liveTotals = useMemo(() => calculateTotals(items), [items]);
-  const liveSpecs = useMemo(() => calculateSolarSpecs(liveTotals.totalDailyKWh, config.panelPowerW, config.efficiencyPercent), [liveTotals.totalDailyKWh, config.panelPowerW, config.efficiencyPercent]);
+  const liveSpecs = useMemo(() => calculateSolarSpecs(liveTotals.totalDailyKWh, config.panelPowerW, config.efficiencyPercent, config.hsp), [liveTotals.totalDailyKWh, config.panelPowerW, config.efficiencyPercent, config.hsp]);
+
+  const handleFetchSolar = async () => {
+    setSolarLoading(true);
+    setSolarError(null);
+    try {
+      const data = await fetchSolarData(location.lat, location.lng);
+      if (data) {
+        setConfig(prev => ({ ...prev, hsp: data.hsp }));
+        setLocalProfile(prev => ({ ...prev, latitude: location.lat, longitude: location.lng, hsp: data.hsp }));
+      } else {
+        // Fallback to Haiti default
+        const defaultHsp = getHaitiDefaultHSP();
+        setConfig(prev => ({ ...prev, hsp: defaultHsp }));
+        setSolarError("Données Solar API indisponibles pour ce point. Utilisation de la moyenne Haïti.");
+      }
+    } catch (err) {
+      setSolarError("Erreur lors de la récupération des données solaires.");
+    } finally {
+      setSolarLoading(false);
+    }
+  };
 
   const updateItem = (id: string, field: keyof ProspectEntry, value: any) => {
     setItems(items.map(item => {
@@ -102,6 +133,9 @@ export const QuoteEditor: React.FC<QuoteEditorProps> = ({ profile, onSave, onPer
       items, 
       totalDailyKWh: liveTotals.totalDailyKWh,
       totalMaxW: liveTotals.totalMaxW,
+      latitude: location.lat,
+      longitude: location.lng,
+      hsp: config.hsp,
       savedAt: new Date().toISOString()
     };
     onPersist(updatedProfile, config);
@@ -114,7 +148,10 @@ export const QuoteEditor: React.FC<QuoteEditorProps> = ({ profile, onSave, onPer
       ...localProfile, 
       items, 
       totalDailyKWh: liveTotals.totalDailyKWh,
-      totalMaxW: liveTotals.totalMaxW 
+      totalMaxW: liveTotals.totalMaxW,
+      latitude: location.lat,
+      longitude: location.lng,
+      hsp: config.hsp
     }, config);
   };
 
@@ -130,7 +167,7 @@ export const QuoteEditor: React.FC<QuoteEditorProps> = ({ profile, onSave, onPer
           </button>
           <h2 className="text-2xl font-black text-slate-900">Configuration du Devis</h2>
           <div className="flex items-center gap-2 mt-1">
-             <span className="bg-blue-100 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">HSP 5.2 • Rendement {config.efficiencyPercent}%</span>
+             <span className="bg-blue-100 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">HSP {config.hsp?.toFixed(1) || '5.2'} • Rendement {config.efficiencyPercent}%</span>
              <p className="text-slate-500 text-sm">Projet pour {profile.name}.</p>
           </div>
         </div>
@@ -266,6 +303,53 @@ export const QuoteEditor: React.FC<QuoteEditorProps> = ({ profile, onSave, onPer
             </div>
           )}
         </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-slate-800 flex items-center gap-2 uppercase text-xs tracking-widest">
+            <i className="fa-solid fa-location-dot text-red-500"></i> Localisation & Potentiel Solaire (Haïti)
+          </h3>
+          {solarError && <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded">{solarError}</span>}
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div>
+            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Latitude</label>
+            <input 
+              type="number" step="0.0001"
+              value={location.lat}
+              onChange={(e) => setLocation({...location, lat: parseFloat(e.target.value) || 0})}
+              className="w-full bg-slate-50 border border-slate-100 rounded-xl py-2.5 px-4 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Longitude</label>
+            <input 
+              type="number" step="0.0001"
+              value={location.lng}
+              onChange={(e) => setLocation({...location, lng: parseFloat(e.target.value) || 0})}
+              className="w-full bg-slate-50 border border-slate-100 rounded-xl py-2.5 px-4 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="md:col-span-2 flex gap-3">
+            <button 
+              onClick={handleFetchSolar}
+              disabled={solarLoading}
+              className="flex-1 bg-slate-900 text-white py-2.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {solarLoading ? <i className="fa-solid fa-circle-notch animate-spin"></i> : <i className="fa-solid fa-wand-magic-sparkles"></i>}
+              Analyser via Solar API
+            </button>
+            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-2 flex flex-col justify-center min-w-[100px]">
+              <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter">HSP Détecté</span>
+              <span className="text-sm font-black text-blue-700">{config.hsp?.toFixed(2)} h/j</span>
+            </div>
+          </div>
+        </div>
+        <p className="mt-3 text-[10px] text-slate-400 font-medium italic">
+          * La Solar API de Google permet d'obtenir l'ensoleillement précis selon les coordonnées GPS. Par défaut réglé sur Port-au-Prince.
+        </p>
       </div>
 
       <div className="space-y-8">

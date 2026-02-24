@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ClientProfile, QuoteConfig } from '../types';
 import { calculateSolarSpecs } from '../utils';
 import { getEnergyAnalysis } from '../geminiService';
@@ -14,7 +14,7 @@ export const QuoteGenerator: React.FC<QuoteGeneratorProps> = ({ profile, config,
   const [analysis, setAnalysis] = useState<string>('');
   const [loading, setLoading] = useState(false);
   
-  const specs = calculateSolarSpecs(profile.totalDailyKWh, config.panelPowerW, config.efficiencyPercent);
+  const specs = calculateSolarSpecs(profile.totalDailyKWh, config.panelPowerW, config.efficiencyPercent, config.hsp || 5.2);
 
   // Calculs financiers précis
   const materialMarginMultiplier = 1 + (config.marginPercent / 100);
@@ -104,12 +104,15 @@ export const QuoteGenerator: React.FC<QuoteGeneratorProps> = ({ profile, config,
               <h3 className="text-[8px] font-black uppercase tracking-widest text-blue-600 mb-1">Client</h3>
               <p className="text-sm font-black text-slate-800 leading-tight">{profile.name}</p>
               <p className="text-slate-600 text-[10px] leading-tight">{profile.address}</p>
+              {profile.latitude && profile.longitude && (
+                <p className="text-slate-400 text-[8px] italic leading-tight">GPS: {profile.latitude.toFixed(4)}, {profile.longitude.toFixed(4)}</p>
+              )}
               <p className="text-slate-500 text-[9px]">{profile.siteName}</p>
             </div>
             <div className="text-right">
               <h3 className="text-[8px] font-black uppercase tracking-widest text-blue-600 mb-1">Émetteur</h3>
               <p className="text-xs font-bold text-slate-800">{profile.agentName || 'Expert Solaire Certifié'}</p>
-              <p className="text-slate-400 text-[8px] mt-0.5 uppercase font-medium">HSP: 5.2 | Rendement: {config.efficiencyPercent}%</p>
+              <p className="text-slate-400 text-[8px] mt-0.5 uppercase font-medium">HSP: {config.hsp?.toFixed(2) || '5.2'} | Rendement: {config.efficiencyPercent}%</p>
             </div>
           </div>
 

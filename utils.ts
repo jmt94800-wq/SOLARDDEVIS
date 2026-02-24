@@ -35,8 +35,12 @@ export const parseCSV = (csvText: string): ProspectEntry[] => {
 };
 
 export const calculateTotals = (items: ProspectEntry[]) => {
-  const dailyKWh = items.reduce((sum, i) => sum + (i.inclusPuisCrete && i.quantite > 0 ? i.puissanceHoraireKWh * i.dureeHj * i.quantite : 0), 0);
+  // L'énergie (kWh) est calculée sur TOUS les appareils
+  const dailyKWh = items.reduce((sum, i) => sum + (i.quantite > 0 ? i.puissanceHoraireKWh * i.dureeHj * i.quantite : 0), 0);
+  
+  // La puissance de crête (W) reste limitée aux appareils "Crête" pour le dimensionnement de l'onduleur
   const maxW = items.reduce((sum, i) => sum + (i.inclusPuisCrete && i.quantite > 0 ? i.puissanceMaxW * i.quantite : 0), 0);
+  
   return { totalDailyKWh: dailyKWh, totalMaxW: maxW };
 };
 
@@ -65,8 +69,7 @@ export const groupByClient = (entries: ProspectEntry[]): ClientProfile[] => {
   });
 };
 
-export const calculateSolarSpecs = (dailyKWh: number, panelPowerW: number = 425, efficiencyPercent: number = 80) => {
-  const hsp = 5.2; 
+export const calculateSolarSpecs = (dailyKWh: number, panelPowerW: number = 425, efficiencyPercent: number = 80, hsp: number = 5.2) => {
   const basicKWp = dailyKWh / hsp; 
   const efficiencyFactor = Math.max(0.1, efficiencyPercent / 100);
   const neededKWp = basicKWp / efficiencyFactor;

@@ -29,6 +29,9 @@ export interface ClientProfile {
   agentName: string;
   savedAt?: string;
   savedConfig?: QuoteConfig;
+  latitude?: number;
+  longitude?: number;
+  hsp?: number;
 }
 
 export interface QuoteConfig {
@@ -39,4 +42,5 @@ export interface QuoteConfig {
   installTaxPercent: number;
   panelPowerW: number;
   efficiencyPercent: number;
+  hsp?: number;
 }
