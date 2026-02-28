@@ -26,7 +26,7 @@ export const getEnergyAnalysis = async (
     const itemsFactures = profile.items.filter(i => i.quantite > 0 && (i.unitPrice || 0) > 0);
 
     const prompt = `
-      TU ES UN SYSTÈME D'AUDIT SÉCURISÉ. TU NE DOIS UTILISER QUE LES DONNÉES FOURNIES CI-DESSOUS.
+      TU ES UN SYSTÈME D'AUDIT SÉCURISÉ SPÉCIALISÉ DANS L'ÉNERGIE ET L'AUTONOMIE ÉNERGÉTIQUE. TU NE DOIS UTILISER QUE LES DONNÉES FOURNIES CI-DESSOUS.
       INTERDICTION FORMELLE : N'utilise pas de valeurs par défaut (ex: 425W) si elles ne sont pas spécifiées dans la CONFIGURATION RÉELLE.
 
       === CONFIGURATION RÉELLE (VALEURS SOURCES) ===
